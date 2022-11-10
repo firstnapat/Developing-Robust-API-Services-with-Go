@@ -2,9 +2,7 @@ package todo
 
 import (
 	"net/http"
-	"strings"
 
-	"github.com/firstnapat/todo/auth"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -27,12 +25,13 @@ func NewTodoHandler(db *gorm.DB) *TodoHandler {
 }
 
 func (t *TodoHandler) NewTask(c *gin.Context) {
-	s := c.Request.Header.Get("Authorization")
-	tokenString := strings.TrimPrefix(s, "Bearer ")
-	if err := auth.Protect(tokenString); err != nil {
-		c.AbortWithStatus(http.StatusUnauthorized)
-		return
-	}
+	// s := c.Request.Header.Get("Authorization")
+	// tokenString := strings.TrimPrefix(s, "Bearer ")
+	// if err := auth.Protect(tokenString); err != nil {
+	// สั่ง Abort เพื่อหยุด chain ของ handler นี้ ไม่บอกเหตุผล
+	// c.AbortWithStatus(http.StatusUnauthorized)
+	// return
+	// }
 	var todo Todo
 	// c.BindJSON = mustbind จะคืน 400 เอง
 	// ShouldBindJSON เราจะ handle status เอง
