@@ -1,8 +1,14 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/firstnapat/todo/auth"
 	"github.com/firstnapat/todo/todo"
@@ -11,6 +17,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+)
+
+var (
+	buildcommit = "dev"
+	buildtime   = time.Now().String()
 )
 
 func main() {
@@ -31,6 +42,12 @@ func main() {
 			"message": "pong",
 		})
 	})
+	r.GET("/x", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"buildcommit": buildcommit,
+			"buildtime":   buildtime,
+		})
+	})
 
 	r.GET("/tokenz", auth.AccessToken(os.Getenv("SIGN")))
 
@@ -39,5 +56,31 @@ func main() {
 	handler := todo.NewTodoHandler(db)
 	protected.POST("/todos", handler.NewTask)
 
-	r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	s := &http.Server{
+		Addr:           ":" + os.Getenv("PORT"),
+		Handler:        r,
+		ReadTimeout:    10 * time.Second,
+		WriteTimeout:   10 * time.Second,
+		MaxHeaderBytes: 1 << 20,
+	}
+	go func() {
+		if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("listen: %s\n", err)
+		}
+	}()
+
+	<-ctx.Done()
+	stop()
+	fmt.Println("shutting down gracefully, press Ctrl+C again to force")
+
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := s.Shutdown(timeoutCtx); err != nil {
+		fmt.Println(err)
+	}
+
 }
