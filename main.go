@@ -13,6 +13,7 @@ import (
 	"github.com/firstnapat/todo/auth"
 	"github.com/firstnapat/todo/todo"
 	"github.com/joho/godotenv"
+	"golang.org/x/time/rate"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/sqlite"
@@ -25,7 +26,13 @@ var (
 )
 
 func main() {
-	err := godotenv.Load("local.env")
+	_, err := os.Create("/tmp/live")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.Remove("/tmp/live")
+
+	err = godotenv.Load("local.env")
 	if err != nil {
 		log.Printf("please consider environment variables: %s", err)
 	}
@@ -37,6 +44,12 @@ func main() {
 	db.AutoMigrate(&todo.Todo{})
 
 	r := gin.Default()
+	r.GET("/healthz", func(ctx *gin.Context) {
+		ctx.Status(200)
+	})
+
+	r.GET("/limitz", limitedHandler)
+
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "pong",
@@ -82,5 +95,18 @@ func main() {
 	if err := s.Shutdown(timeoutCtx); err != nil {
 		fmt.Println(err)
 	}
+
+}
+
+var limiter = rate.NewLimiter(5, 5)
+
+func limitedHandler(c *gin.Context) {
+	if !limiter.Allow() {
+		c.AbortWithStatus(http.StatusTooManyRequests)
+		return
+	}
+	c.JSON(200, gin.H{
+		"message": "pong",
+	})
 
 }
