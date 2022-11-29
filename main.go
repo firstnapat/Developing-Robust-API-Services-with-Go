@@ -16,7 +16,7 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/driver/sqlite"
+	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
@@ -36,7 +36,7 @@ func main() {
 	if err != nil {
 		log.Printf("please consider environment variables: %s", err)
 	}
-	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
+	db, err := gorm.Open(mysql.Open(os.Getenv("DB_CONN")), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
 	}
