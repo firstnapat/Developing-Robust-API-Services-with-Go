@@ -12,6 +12,7 @@ import (
 
 	"github.com/firstnapat/todo/auth"
 	"github.com/firstnapat/todo/todo"
+	"github.com/gin-contrib/cors"
 	"github.com/joho/godotenv"
 	"golang.org/x/time/rate"
 
@@ -44,6 +45,17 @@ func main() {
 	db.AutoMigrate(&todo.Todo{})
 
 	r := gin.Default()
+	config := cors.DefaultConfig()
+	config.AllowOrigins = []string{
+		"http://localhost:8080",
+	}
+	config.AllowHeaders = []string{
+		"Origin",
+		"Authorization",
+		"TransactionID",
+	}
+	r.Use(cors.New(config))
+
 	r.GET("/healthz", func(ctx *gin.Context) {
 		ctx.Status(200)
 	})
@@ -68,6 +80,8 @@ func main() {
 
 	handler := todo.NewTodoHandler(db)
 	protected.POST("/todos", handler.NewTask)
+	protected.GET("/todos", handler.List)
+	protected.DELETE("/todos/:id", handler.Remove)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
